@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh the HTPlay-1 logs page
+
+[Timer]
+OnBootSec=10s
+OnUnitActiveSec=5s
+AccuracySec=1s
+Unit=airplay2-logs.service
+
+[Install]
+WantedBy=timers.target

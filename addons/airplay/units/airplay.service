@@ -1,0 +1,19 @@
+[Unit]
+Description=AirPlay receiver (Shairport Sync)
+Requires=nqptp.service avahi-daemon.service
+After=network.target nqptp.service avahi-daemon.service
+
+[Service]
+Type=simple
+User=root
+Environment=LD_LIBRARY_PATH=/var/lib/olympia/addons/airplay/lib:/usr/local/lib
+CPUSchedulingPolicy=fifo
+CPUSchedulingPriority=45
+ExecStart=/bin/bash -c 'NAME="$(tr -d "\\000-\\037" < /var/lib/olympia/unitname.txt 2>/dev/null)"; [ -z "$NAME" ] && NAME="HTP-1"; exec /var/lib/olympia/addons/airplay/bin/shairport-sync --configfile=/var/lib/olympia/addons/airplay/etc/shairport-sync.conf -a "$NAME"'
+ExecStartPost=/bin/bash -c 'echo $MAINPID > /sys/fs/cgroup/cpuset/user/cgroup.procs 2>/dev/null || true'
+KillSignal=SIGINT
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

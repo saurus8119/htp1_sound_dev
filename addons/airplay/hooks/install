@@ -1,0 +1,5 @@
+#!/bin/bash
+# AirPlay pulls Avahi in through Requires=; do not leave it enabled at boot.
+systemctl disable avahi-daemon.service avahi-daemon.socket >/dev/null 2>&1 || true
+systemctl daemon-reload >/dev/null 2>&1 || true
+exit 0

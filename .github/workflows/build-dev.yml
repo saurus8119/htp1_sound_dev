@@ -1,0 +1,69 @@
+name: Build HTPlay-1 development addon
+
+on:
+  push:
+    branches: [work/htplay1-control-auth]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm
+      - uses: docker/setup-buildx-action@v3
+      - name: Build ARMv7 binaries in Debian 9 userspace
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/airplay-out/work"
+          docker buildx build --platform linux/arm/v7 --load -t htp1-airplay-build ./addons/airplay/build
+          docker run --rm --platform linux/arm/v7 --entrypoint /bin/sh \
+            -v "$RUNNER_TEMP/airplay-out:/out" \
+            -v "$RUNNER_TEMP/airplay-out/work:/work" \
+            htp1-airplay-build -c 'exec /usr/local/bin/build-target'
+      - name: Package installable development archive
+        id: package
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/airplay-out"
+          PACKAGE_OUT="$RUNNER_TEMP/dev-package"
+          test -s "$OUT/shairport-sync"
+          test -s "$OUT/nqptp"
+          test -s "$OUT/htplay1-control"
+          install -m 0755 "$OUT/shairport-sync" addons/airplay/bin/shairport-sync
+          install -m 0755 "$OUT/nqptp" addons/airplay/bin/nqptp
+          install -m 0755 "$OUT/htplay1-control" addons/airplay/bin/htplay1-control
+          rm -rf addons/airplay/lib addons/airplay/debs
+          cp -a "$OUT/lib" addons/airplay/lib
+          cp -a "$OUT/debs" addons/airplay/debs
+          mkdir -p "$PACKAGE_OUT"
+          bash tools/pack.sh addons/airplay airplay2 "$PACKAGE_OUT"
+          ARCHIVE="$PACKAGE_OUT/htp1-addon-airplay2-$(jq -er '.version' addons/airplay/addon.json).tar.gz"
+          test -s "$ARCHIVE"
+          tar -tzf "$ARCHIVE" > "$RUNNER_TEMP/archive-list.txt"
+          for path in \
+            airplay2/bin/shairport-sync \
+            airplay2/bin/nqptp \
+            airplay2/bin/htplay1-control \
+            airplay2/units/htplay1-control.service \
+            airplay2/www/index.html \
+            airplay2/units/airplay2-logs.timer; do
+            grep -Fxq "$path" "$RUNNER_TEMP/archive-list.txt"
+          done
+          tar -xOzf "$ARCHIVE" airplay2/addon.json | jq -e '.published == false and .version == "2.0.72-dev"' >/dev/null
+          (cd "$PACKAGE_OUT" && sha256sum -c "$(basename "$ARCHIVE").sha256")
+          echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HTPlay-1-development-addon
+          path: |
+            ${{ steps.package.outputs.archive }}
+            ${{ steps.package.outputs.archive }}.sha256
+          if-no-files-found: error
+          retention-days: 14
