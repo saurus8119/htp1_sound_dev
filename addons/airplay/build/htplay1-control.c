@@ -91,7 +91,8 @@ static void handle(int fd) {
   while(line){line+=2;if(!*line)break;char *next=strstr(line,"\r\n");if(next)*next=0;
     if(!strncasecmp(line,"Host:",5))snprintf(host,sizeof host,"%s",line+5);
     if(!strncasecmp(line,"Origin:",7))snprintf(origin,sizeof origin,"%s",line+7);
-    if(!next) break;\n    line=next;
+    if(!next) break;
+    line=next;
   }
   while(*host==' '||*host=='\t')memmove(host,host+1,strlen(host));
   while(*origin==' '||*origin=='\t')memmove(origin,origin+1,strlen(origin));
