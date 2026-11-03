@@ -5,8 +5,9 @@
 :root{color-scheme:dark;font:14px/1.5 system-ui,sans-serif;background:#151719;color:#e8e8e8}
 body{margin:0;padding:22px;max-width:1100px;margin-inline:auto}header,.row,.actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 h1{font-size:22px;margin:0}h2{font-size:17px;margin:0 0 12px}section{background:#202427;border:1px solid #383e42;border-radius:8px;padding:16px;margin:14px 0}
-button,select,.download{background:#30363b;color:#fff;border:1px solid #596168;border-radius:5px;padding:8px 12px;cursor:pointer;text-decoration:none}
+button,.download{background:#30363b;color:#fff;border:1px solid #596168;border-radius:5px;padding:8px 12px;cursor:pointer;text-decoration:none}
 button:disabled{opacity:.5;cursor:wait}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#090b0c;border:1px solid #333;border-radius:6px;padding:14px;max-height:48vh;overflow:auto;margin:12px 0 0}
+textarea{display:block;width:100%;min-height:520px;box-sizing:border-box;background:#090b0c;color:#e8e8e8;border:1px solid #596168;border-radius:6px;padding:12px;font:13px/1.45 ui-monospace,monospace;tab-size:2;resize:vertical}
 .status{color:#aeb5ba}.good{color:#8bd49a}.bad{color:#ff9999}.muted{color:#aeb5ba}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:12px}
 a{color:#9bc8ff}
 </style></head><body>
@@ -14,8 +15,11 @@ a{color:#9bc8ff}
 <section><h2>Receiver status</h2><div class="grid"><div>Shairport Sync: <strong id="receiver">—</strong></div><div>NQPTP: <strong id="nqptp">—</strong></div></div>
 <div class="actions"><button data-action="start">Start receiver</button><button data-action="stop">Stop receiver</button><button data-action="restart">Restart receiver</button><button id="refresh-status">Refresh status</button></div></section>
 <section><h2>Logs</h2><div class="row"><span class="muted">The snapshot updates every 5 seconds.</span><button id="refresh-logs">Refresh logs</button><a class="download" href="./logs.txt" download="HTPlay-1-logs.txt">Download log snapshot</a></div><pre id="logs">Loading logs…</pre></section>
-<section><h2>Configuration</h2><p class="muted">The first version only changes diagnostics.log_verbosity. It does not edit audio, clocking, buffering, discovery, or decoder settings. A backup is written before saving. Restart the receiver to apply the new verbosity.</p>
-<div class="row"><label for="verbosity">Log verbosity</label><select id="verbosity"><option value="0">0 — errors only</option><option value="1">1 — normal</option><option value="2">2 — detailed</option></select><button id="save-verbosity">Save verbosity</button><button id="restart-config">Restart to apply</button></div><pre id="config">Loading configuration…</pre></section>
+<section><h2>Shairport Sync configuration</h2>
+<p class="muted">Edit the complete shairport-sync.conf file below. Saving creates or replaces etc/shairport-sync.conf.bak with the previous file, then atomically installs your edited file. Changes take effect after restarting the receiver. Keep a copy of the original settings; invalid configuration can prevent playback.</p>
+<div class="row"><button id="reload-config">Reload from HTP-1</button><button id="save-config">Save configuration</button><button id="restart-config">Restart receiver</button><span id="save-status" class="muted"></span></div>
+<textarea id="config" spellcheck="false" aria-label="Complete Shairport Sync configuration">Loading configuration…</textarea>
+</section>
 <script>
 (()=>{
  const api=location.protocol+'//'+location.hostname+':17821';
@@ -29,13 +33,14 @@ a{color:#9bc8ff}
  function state(id,value){$(id).textContent=value;$(id).className=value==='active'?'good':'bad';}
  async function status(){const d=await call('/api/status');state('receiver',d.receiver);state('nqptp',d.nqptp);$('connection').textContent='Connected to HTPlay-1 on this LAN';$('connection').className='good';}
  async function logs(){const d=await call('/api/logs');$('logs').textContent=d.logs;}
- async function config(){const d=await call('/api/config');$('config').textContent=d.config;const m=d.config.match(/diagnostics\s*=\s*\{[\s\S]*?log_verbosity\s*=\s*(\d+)/);if(m&&+m[1]<=2)$('verbosity').value=m[1];}
+ async function config(){const d=await call('/api/config');$('config').value=d.config;$('save-status').textContent='Loaded from HTP-1';}
  async function refreshAll(){try{await Promise.all([status(),logs(),config()]);}catch(e){$('connection').textContent='Control service unavailable: '+e.message;$('connection').className='bad';}}
  document.querySelectorAll('[data-action]').forEach(button=>button.addEventListener('click',async()=>{button.disabled=true;try{await call('/api/'+button.dataset.action,{method:'POST'});await status();}catch(e){alert(e.message);}finally{button.disabled=false;}}));
  $('refresh-status').onclick=()=>status().catch(e=>alert(e.message));
  $('refresh-logs').onclick=()=>logs().catch(e=>alert(e.message));
- $('save-verbosity').onclick=async()=>{const b=$('save-verbosity');b.disabled=true;try{await call('/api/config/log-verbosity',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:Number($('verbosity').value)})});await config();alert('Saved. Backup: shairport-sync.conf.bak. Restart the receiver to apply.');}catch(e){alert(e.message);}finally{b.disabled=false;}};
- $('restart-config').onclick=async()=>{try{await call('/api/restart',{method:'POST'});await status();}catch(e){alert(e.message);}};
+ $('reload-config').onclick=()=>{if(confirm('Discard unsaved edits and reload the file from the HTP-1?'))config().catch(e=>alert(e.message));};
+ $('save-config').onclick=async()=>{const b=$('save-config');b.disabled=true;$('save-status').textContent='Saving…';try{const d=await call('/api/config',{method:'POST',headers:{'Content-Type':'text/plain; charset=utf-8'},body:$('config').value});$('save-status').textContent='Saved. Backup: '+d.backup+'. Restart receiver to apply.';}catch(e){$('save-status').textContent='Save failed: '+e.message;}finally{b.disabled=false;}};
+ $('restart-config').onclick=async()=>{try{await call('/api/restart',{method:'POST'});await status();$('save-status').textContent='Receiver restarted.';}catch(e){alert(e.message);}};
  refreshAll();setInterval(()=>{status().catch(()=>{});logs().catch(()=>{});},5000);
 })();
 </script></body></html>
