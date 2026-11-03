@@ -104,7 +104,7 @@ static void handle(int fd) {
   char *sep=strstr(req,"\r\n\r\n"); if(!sep){reply(fd,400,"application/json","{\"error\":\"bad request\"}",NULL);return;}
   size_t header_len=(size_t)(sep-req)+4, content_len=0;
   char *cl=strcasestr(req,"\r\nContent-Length:");
-  if(cl){char *v=strchr(cl,':')+1;while(*v==' '||*v=='\\t')v++;char *e=NULL;unsigned long z=strtoul(v,&e,10);if(e==v||z>4096){reply(fd,413,"application/json","{\"error\":\"request body too large\"}",NULL);return;}content_len=(size_t)z;}
+  if(cl){char *v=strchr(cl,':')+1;while(*v==' '||*v=='\\t')v++;char *e=NULL;unsigned long z=strtoul(v,&e,10);if(e==v||z>MAX_CONFIG){reply(fd,413,"application/json","{\"error\":\"request body too large\"}",NULL);return;}content_len=(size_t)z;}
   if(header_len+content_len>MAX_REQ){reply(fd,413,"application/json","{\"error\":\"request too large\"}",NULL);return;}
   while(used<header_len+content_len){ssize_t n=recv(fd,req+used,MAX_REQ-used,0);if(n<=0){reply(fd,400,"application/json","{\"error\":\"incomplete request body\"}",NULL);return;}used+=(size_t)n;req[used]=0;}
   *sep=0; char method[8]={0},path[256]={0},host[256]={0},origin[512]={0};
