@@ -25,6 +25,7 @@ RUN printf '%s\n' \
 WORKDIR /build
 
 COPY build-target.sh /usr/local/bin/build-target
+COPY htplay1-control.c /usr/local/src/htplay1-control.c
 COPY uuid-generate-sha1-compat.c /usr/local/src/uuid-generate-sha1-compat.c
 COPY check-aac-fltp.c /usr/local/src/check-aac-fltp.c
 COPY check-alac-decoder.c /usr/local/src/check-alac-decoder.c
