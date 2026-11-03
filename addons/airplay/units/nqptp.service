@@ -1,0 +1,15 @@
+[Unit]
+Description=Not Quite PTP, the timing peer AirPlay 2 requires
+After=network.target
+StopWhenUnneeded=yes
+
+[Service]
+Type=simple
+User=root
+ExecStart=/var/lib/olympia/addons/airplay/bin/nqptp
+ExecStartPost=/bin/bash -c 'echo $MAINPID > /sys/fs/cgroup/cpuset/user/cgroup.procs 2>/dev/null || true'
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

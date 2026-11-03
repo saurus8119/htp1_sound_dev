@@ -1,0 +1,20 @@
+diff --git a/shairport.c b/shairport.c
+--- a/shairport.c
++++ b/shairport.c
+@@ -1107,11 +1107,13 @@
+                    "Shairport Sync. The default decoder will be used.");
+         } else if (strcasecmp(str, "ffmpeg") == 0) {
+-          if ((config.decoders_supported & 1 << decoder_ffmpeg_alac) != 0)
++          if ((config.decoders_supported & 1 << decoder_ffmpeg_alac) != 0) {
+             config.decoder_in_use = 1 << decoder_ffmpeg_alac; // use the FFMPEG ALAC decoder
++            inform("Using the FFmpeg ALAC decoder.");
++          }
+           else
+-            inform("Support for the FFMPEG ALAC decoder has not been compiled into this version of "
+-                   "Shairport Sync. The default decoder will be used.");
++            die("FFmpeg ALAC was explicitly requested but is not compiled into this version of "
++                "Shairport Sync. Refusing to fall back to another ALAC decoder.");
+         } else
+           die("Invalid alac_decoder option choice \"%s\". It should be \"ffmpeg\", \"hammerton\" "
+               "or \"apple\"",
+               str);

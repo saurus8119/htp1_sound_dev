@@ -1,0 +1,7 @@
+[Unit]
+Description=Publish HTPlay-1 journal entries for its logs page
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/var/lib/olympia/addons/airplay2/bin/update-logs.sh

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTPlay-1 Logs</title>
+<style>
+:root{color-scheme:dark;font:14px/1.5 system-ui,sans-serif;background:#151719;color:#e8e8e8}
+body{margin:0;padding:24px;max-width:1200px;margin-inline:auto}
+header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+h1{font-size:22px;margin:0}
+.status{color:#aaa}
+button,.download{background:#30363b;color:#fff;border:1px solid #555;border-radius:5px;padding:8px 12px;cursor:pointer;text-decoration:none}
+.download[hidden]{display:none}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#090b0c;border:1px solid #333;border-radius:6px;padding:16px;min-height:60vh;overflow:auto}
+a{color:#9bc8ff}
+</style>
+</head>
+<body>
+<header>
+  <h1>HTPlay-1 Logs</h1>
+  <span id="status" class="status">Loading…</span>
+  <button id="refresh" type="button">Refresh now</button>
+  <a id="download" class="download" href="./logs.txt" download="HTPlay-1-logs.txt" hidden>Download logs</a>
+</header>
+<pre id="logs">Loading HTPlay-1 service logs…</pre>
+<script>
+(() => {
+  const output = document.getElementById('logs');
+  const status = document.getElementById('status');
+  const download = document.getElementById('download');
+  let busy = false;
+  async function refresh() {
+    if (busy) return;
+    busy = true;
+    try {
+      const response = await fetch('./logs.txt?t=' + Date.now(), {cache:'no-store'});
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      output.textContent = await response.text();
+      download.hidden = false;
+      status.textContent = 'Updated ' + new Date().toLocaleTimeString() + ' · refreshes every 5 seconds';
+    } catch (error) {
+      download.hidden = true;
+      status.textContent = 'Unable to load logs';
+      output.textContent = 'Could not read the local HTPlay-1 log snapshot. ' + error.message;
+    } finally {
+      busy = false;
+    }
+  }
+  document.getElementById('refresh').addEventListener('click', refresh);
+  refresh();
+  window.setInterval(refresh, 5000);
+})();
+</script>
+</body>
+</html>
