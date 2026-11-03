@@ -69,3 +69,17 @@ jobs:
             ${{ steps.package.outputs.archive }}.sha256
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish development pre-release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dev-v${{ steps.package.outputs.version }}
+          name: HTPlay-1 ${{ steps.package.outputs.version }} (development)
+          prerelease: true
+          make_latest: false
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          files: |
+            ${{ steps.package.outputs.archive }}
+            ${{ steps.package.outputs.archive }}.sha256
