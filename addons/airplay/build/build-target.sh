@@ -306,3 +306,7 @@ done
 
 cat "$OUT/BUILD-REPORT.txt"
 cat "$OUT/alac-verification-evidence.txt"
+
+# Build the ARMv7 LAN-only HTPlay-1 control API.
+gcc -Os -Wall -Wextra -Werror /usr/local/src/htplay1-control.c -o "$OUT/htplay1-control"
+file "$OUT/htplay1-control"
