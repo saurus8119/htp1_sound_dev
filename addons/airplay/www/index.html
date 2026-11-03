@@ -1,56 +1,41 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HTPlay-1 Logs</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HTPlay-1 Control</title>
 <style>
 :root{color-scheme:dark;font:14px/1.5 system-ui,sans-serif;background:#151719;color:#e8e8e8}
-body{margin:0;padding:24px;max-width:1200px;margin-inline:auto}
-header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px}
-h1{font-size:22px;margin:0}
-.status{color:#aaa}
-button,.download{background:#30363b;color:#fff;border:1px solid #555;border-radius:5px;padding:8px 12px;cursor:pointer;text-decoration:none}
-.download[hidden]{display:none}
-pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#090b0c;border:1px solid #333;border-radius:6px;padding:16px;min-height:60vh;overflow:auto}
+body{margin:0;padding:22px;max-width:1100px;margin-inline:auto}header,.row,.actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+h1{font-size:22px;margin:0}h2{font-size:17px;margin:0 0 12px}section{background:#202427;border:1px solid #383e42;border-radius:8px;padding:16px;margin:14px 0}
+button,select,.download{background:#30363b;color:#fff;border:1px solid #596168;border-radius:5px;padding:8px 12px;cursor:pointer;text-decoration:none}
+button:disabled{opacity:.5;cursor:wait}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#090b0c;border:1px solid #333;border-radius:6px;padding:14px;max-height:48vh;overflow:auto;margin:12px 0 0}
+.status{color:#aeb5ba}.good{color:#8bd49a}.bad{color:#ff9999}.muted{color:#aeb5ba}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:12px}
 a{color:#9bc8ff}
-</style>
-</head>
-<body>
-<header>
-  <h1>HTPlay-1 Logs</h1>
-  <span id="status" class="status">Loading…</span>
-  <button id="refresh" type="button">Refresh now</button>
-  <a id="download" class="download" href="./logs.txt" download="HTPlay-1-logs.txt" hidden>Download logs</a>
-</header>
-<pre id="logs">Loading HTPlay-1 service logs…</pre>
+</style></head><body>
+<header><h1>HTPlay-1 Control</h1><span id="connection" class="status">Connecting to local control service…</span></header>
+<section><h2>Receiver status</h2><div class="grid"><div>Shairport Sync: <strong id="receiver">—</strong></div><div>NQPTP: <strong id="nqptp">—</strong></div></div>
+<div class="actions"><button data-action="start">Start receiver</button><button data-action="stop">Stop receiver</button><button data-action="restart">Restart receiver</button><button id="refresh-status">Refresh status</button></div></section>
+<section><h2>Logs</h2><div class="row"><span class="muted">The snapshot updates every 5 seconds.</span><button id="refresh-logs">Refresh logs</button><a class="download" href="./logs.txt" download="HTPlay-1-logs.txt">Download log snapshot</a></div><pre id="logs">Loading logs…</pre></section>
+<section><h2>Configuration</h2><p class="muted">The first version only changes diagnostics.log_verbosity. It does not edit audio, clocking, buffering, discovery, or decoder settings. A backup is written before saving. Restart the receiver to apply the new verbosity.</p>
+<div class="row"><label for="verbosity">Log verbosity</label><select id="verbosity"><option value="0">0 — errors only</option><option value="1">1 — normal</option><option value="2">2 — detailed</option></select><button id="save-verbosity">Save verbosity</button><button id="restart-config">Restart to apply</button></div><pre id="config">Loading configuration…</pre></section>
 <script>
-(() => {
-  const output = document.getElementById('logs');
-  const status = document.getElementById('status');
-  const download = document.getElementById('download');
-  let busy = false;
-  async function refresh() {
-    if (busy) return;
-    busy = true;
-    try {
-      const response = await fetch('./logs.txt?t=' + Date.now(), {cache:'no-store'});
-      if (!response.ok) throw new Error('HTTP ' + response.status);
-      output.textContent = await response.text();
-      download.hidden = false;
-      status.textContent = 'Updated ' + new Date().toLocaleTimeString() + ' · refreshes every 5 seconds';
-    } catch (error) {
-      download.hidden = true;
-      status.textContent = 'Unable to load logs';
-      output.textContent = 'Could not read the local HTPlay-1 log snapshot. ' + error.message;
-    } finally {
-      busy = false;
-    }
-  }
-  document.getElementById('refresh').addEventListener('click', refresh);
-  refresh();
-  window.setInterval(refresh, 5000);
+(()=>{
+ const api=location.protocol+'//'+location.hostname+':17821';
+ const $=id=>document.getElementById(id);
+ async function call(path,options={}){
+   const response=await fetch(api+path,{cache:'no-store',...options,headers:{...(options.headers||{})}});
+   const data=await response.json();
+   if(!response.ok)throw new Error(data.error||('HTTP '+response.status));
+   return data;
+ }
+ function state(id,value){$(id).textContent=value;$(id).className=value==='active'?'good':'bad';}
+ async function status(){const d=await call('/api/status');state('receiver',d.receiver);state('nqptp',d.nqptp);$('connection').textContent='Connected to HTPlay-1 on this LAN';$('connection').className='good';}
+ async function logs(){const d=await call('/api/logs');$('logs').textContent=d.logs;}
+ async function config(){const d=await call('/api/config');$('config').textContent=d.config;const m=d.config.match(/diagnostics\s*=\s*\{[\s\S]*?log_verbosity\s*=\s*(\d+)/);if(m&&+m[1]<=2)$('verbosity').value=m[1];}
+ async function refreshAll(){try{await Promise.all([status(),logs(),config()]);}catch(e){$('connection').textContent='Control service unavailable: '+e.message;$('connection').className='bad';}}
+ document.querySelectorAll('[data-action]').forEach(button=>button.addEventListener('click',async()=>{button.disabled=true;try{await call('/api/'+button.dataset.action,{method:'POST'});await status();}catch(e){alert(e.message);}finally{button.disabled=false;}}));
+ $('refresh-status').onclick=()=>status().catch(e=>alert(e.message));
+ $('refresh-logs').onclick=()=>logs().catch(e=>alert(e.message));
+ $('save-verbosity').onclick=async()=>{const b=$('save-verbosity');b.disabled=true;try{await call('/api/config/log-verbosity',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:Number($('verbosity').value)})});await config();alert('Saved. Backup: shairport-sync.conf.bak. Restart the receiver to apply.');}catch(e){alert(e.message);}finally{b.disabled=false;}};
+ $('restart-config').onclick=async()=>{try{await call('/api/restart',{method:'POST'});await status();}catch(e){alert(e.message);}};
+ refreshAll();setInterval(()=>{status().catch(()=>{});logs().catch(()=>{});},5000);
 })();
-</script>
-</body>
-</html>
+</script></body></html>
