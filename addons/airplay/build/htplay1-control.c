@@ -17,6 +17,7 @@
 #define CFG ROOT "/etc/shairport-sync.conf"
 #define LOG ROOT "/www/logs.txt"
 #define MAX_REQ 65536
+#define MAX_CONFIG 32768
 
 static int send_all(int fd, const char *p, size_t n) {
   while (n) { ssize_t k=send(fd,p,n,0); if(k<=0)return -1; p+=k; n-=(size_t)k; }
@@ -76,6 +77,27 @@ static int set_verbosity(int value) {
   if(rename(tmp,CFG)){unlink(tmp);return -1;}
   return 0;
 }
+static int save_config(const char *data,size_t len) {
+  char bak[256],tmp[256];
+  if(!len||len>MAX_CONFIG||memchr(data,'\\0',len))return -2;
+  snprintf(bak,sizeof bak,"%s/etc/shairport-sync.conf.bak",ROOT);
+  snprintf(tmp,sizeof tmp,"%s/etc/.shairport-sync.conf.tmp",ROOT);
+  FILE *src=fopen(CFG,"rb"); if(!src)return -1;
+  FILE *dst=fopen(bak,"wb"); if(!dst){fclose(src);return -1;}
+  char buf[4096]; size_t n; int failed=0;
+  while((n=fread(buf,1,sizeof buf,src))>0)if(fwrite(buf,1,n,dst)!=n){failed=1;break;}
+  if(ferror(src))failed=1;
+  if(fclose(src))failed=1;
+  if(fclose(dst))failed=1;
+  if(failed)return -1;
+  chmod(bak,0600);
+  FILE *out=fopen(tmp,"wb"); if(!out)return -1;
+  if(fwrite(data,1,len,out)!=len){fclose(out);unlink(tmp);return -1;}
+  if(fclose(out)){unlink(tmp);return -1;}
+  chmod(tmp,0644);
+  if(rename(tmp,CFG)){unlink(tmp);return -1;}
+  return 0;
+}
 static void handle(int fd) {
   char req[MAX_REQ+1]; size_t used=0;
   while(used<MAX_REQ){ssize_t n=recv(fd,req+used,MAX_REQ-used,0);if(n<=0)return;used+=(size_t)n;req[used]=0;if(strstr(req,"\r\n\r\n"))break;}
@@ -119,6 +141,10 @@ static void handle(int fd) {
   if(!strcmp(method,"POST")&&(!strcmp(path,"/api/start")||!strcmp(path,"/api/stop")||!strcmp(path,"/api/restart"))){
     const char *a=!strcmp(path,"/api/start")?"start":!strcmp(path,"/api/stop")?"stop":"restart";
     int r=service_action(a);reply(fd,r?500:200,"application/json",r?"{\"error\":\"systemd operation failed\"}":"{\"ok\":true}",cors);return;
+  }
+  if(!strcmp(method,"POST")&&!strcmp(path,"/api/config")){
+    int r=save_config(body,content_len);
+    reply(fd,r==-2?400:r?500:200,"application/json",r==-2?"{\\"error\\":\\"configuration is empty, too large, or contains NUL bytes\\"}":r?"{\\"error\\":\\"configuration save failed; previous file may be in backup\\"}":"{\\"ok\\":true,\\"backup\\":\\"shairport-sync.conf.bak\\",\\"restart_required\\":true}",cors);return;
   }
   if(!strcmp(method,"POST")&&!strcmp(path,"/api/config/log-verbosity")){
     char *v=strstr(body,"\"value\"");int x=-1;if(v&&(v=strchr(v,':')))x=atoi(v+1);
