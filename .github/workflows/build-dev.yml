@@ -60,6 +60,7 @@ jobs:
           tar -xOzf "$ARCHIVE" airplay2/addon.json | jq -e '.published == false and (.version | type == "string" and test("^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$"))' >/dev/null
           (cd "$PACKAGE_OUT" && sha256sum -c "$(basename "$ARCHIVE").sha256")
           echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
           name: HTPlay-1-development-addon
