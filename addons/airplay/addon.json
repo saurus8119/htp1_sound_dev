@@ -30,5 +30,6 @@
   "ui": {
     "switch": true,
     "page": "/addons/airplay2/"
-  }
+  },
+  "published": false
 }
