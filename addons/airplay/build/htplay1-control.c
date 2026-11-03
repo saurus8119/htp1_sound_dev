@@ -132,7 +132,7 @@ static void handle(int fd) {
     reply(fd,200,"application/json",b,cors);return;
   }
   if(!strcmp(method,"GET")&&(!strcmp(path,"/api/logs")||!strcmp(path,"/api/config"))){
-    char raw[30000],esc[60000],out[61000];const char *file=!strcmp(path,"/api/logs")?LOG:CFG;
+    char raw[MAX_CONFIG+1],esc[(MAX_CONFIG*2)+1],out[(MAX_CONFIG*2)+128];const char *file=!strcmp(path,"/api/logs")?LOG:CFG;
     if(read_file(file,raw,sizeof raw)<0)snprintf(raw,sizeof raw,"Unable to read %s",file);
     json_escape(esc,sizeof esc,raw);
     snprintf(out,sizeof out,!strcmp(path,"/api/logs")?"{\"logs\":\"%s\"}":"{\"config\":\"%s\"}",esc);
