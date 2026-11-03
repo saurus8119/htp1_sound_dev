@@ -80,6 +80,11 @@ static void handle(int fd) {
   char req[MAX_REQ+1]; size_t used=0;
   while(used<MAX_REQ){ssize_t n=recv(fd,req+used,MAX_REQ-used,0);if(n<=0)return;used+=(size_t)n;req[used]=0;if(strstr(req,"\r\n\r\n"))break;}
   char *sep=strstr(req,"\r\n\r\n"); if(!sep){reply(fd,400,"application/json","{\"error\":\"bad request\"}",NULL);return;}
+  size_t header_len=(size_t)(sep-req)+4, content_len=0;
+  char *cl=strcasestr(req,"\r\nContent-Length:");
+  if(cl){char *v=strchr(cl,':')+1;while(*v==' '||*v=='\\t')v++;char *e=NULL;unsigned long z=strtoul(v,&e,10);if(e==v||z>4096){reply(fd,413,"application/json","{\"error\":\"request body too large\"}",NULL);return;}content_len=(size_t)z;}
+  if(header_len+content_len>MAX_REQ){reply(fd,413,"application/json","{\"error\":\"request too large\"}",NULL);return;}
+  while(used<header_len+content_len){ssize_t n=recv(fd,req+used,MAX_REQ-used,0);if(n<=0){reply(fd,400,"application/json","{\"error\":\"incomplete request body\"}",NULL);return;}used+=(size_t)n;req[used]=0;}
   *sep=0; char method[8]={0},path[256]={0},host[256]={0},origin[512]={0};
   if(sscanf(req,"%7s %255s",method,path)!=2){reply(fd,400,"application/json","{\"error\":\"bad request line\"}",NULL);return;}
   char *line=strstr(req,"\r\n");
@@ -97,7 +102,7 @@ static void handle(int fd) {
     if(strcmp(origin,expected)){snprintf(expected,sizeof expected,"https://%s",host);if(strcmp(origin,expected)){reply(fd,403,"application/json","{\"error\":\"origin rejected\"}",NULL);return;}}
     cors=origin;
   }
-  char *body=sep+4;
+  char *body=sep+4; body[content_len]=0;
   if(!strcmp(method,"OPTIONS")){reply(fd,200,"text/plain","",cors);return;}
   if(!strcmp(method,"GET")&&!strcmp(path,"/api/status")){
     char b[256];snprintf(b,sizeof b,"{\"receiver\":\"%s\",\"nqptp\":\"%s\"}",service_active("airplay2.service")?"active":"inactive",service_active("nqptp-airplay2.service")?"active":"inactive");
