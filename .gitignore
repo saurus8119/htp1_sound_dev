@@ -1,0 +1,6 @@
+/dist/
+/addons/airplay/bin/shairport-sync
+/addons/airplay/bin/nqptp
+/addons/airplay/lib/libplist-2.0.so*
+/addons/airplay/debs/*.deb
+/addons/airplay/build/build-output/
