@@ -1,6 +1,6 @@
 {
   "id": "airplay2",
-  "version": "2.0.71",
+  "version": "2.0.72-dev",
   "label": "HTPlay-1",
   "summary": "AirPlay receiver (Shairport Sync 5.6.1; NQPTP 1.2.9; SMI11; FFmpeg; SoXR)",
   "requires": {
@@ -12,7 +12,8 @@
     "airplay2.service": "link",
     "nqptp-airplay2.service": "link",
     "airplay2-logs.service": "link",
-    "airplay2-logs.timer": "enable"
+    "airplay2-logs.timer": "enable",
+    "htplay1-control.service": "enable"
   },
   "service": {
     "unit": "airplay2.service",
