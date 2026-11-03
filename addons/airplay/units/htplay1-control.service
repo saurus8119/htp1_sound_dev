@@ -1,0 +1,13 @@
+[Unit]
+Description=HTPlay-1 LAN diagnostics and control API
+After=network.target
+[Service]
+Type=simple
+User=root
+ExecStart=/var/lib/olympia/addons/airplay2/bin/htplay1-control
+Restart=on-failure
+RestartSec=3
+PrivateTmp=true
+NoNewPrivileges=true
+[Install]
+WantedBy=multi-user.target
