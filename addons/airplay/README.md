@@ -15,11 +15,11 @@ Release 2.0.34: build and publish the installable HTP-1 addon package.
 ## HTPlay-1 local control page (development)
 
 The development page at `/addons/airplay2/` adds receiver status, Start/Stop/Restart,
-a five-second log snapshot viewer with the existing download link, and a narrowly
-scoped `diagnostics.log_verbosity` selector (0–2). Saving verbosity first backs
-up the current configuration to `etc/shairport-sync.conf.bak`; restarting the
-receiver applies it. No audio, clock, buffering, decoder, or discovery settings
-are editable from this page.
+a five-second log snapshot viewer with the existing download link, and a full
+editor for `etc/shairport-sync.conf`. The editor loads the live file, lets you
+edit and save the complete configuration, and writes the previous file to
+`etc/shairport-sync.conf.bak` before atomically replacing it. Restart the receiver
+to apply changes. The editor accepts files up to 32 KiB.
 
 The companion `htplay1-control.service` listens on TCP port 17821. It accepts
 connections only from IPv4 private LAN ranges (10/8, 172.16/12, 192.168/16)
