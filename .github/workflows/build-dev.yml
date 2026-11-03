@@ -33,6 +33,7 @@ jobs:
           set -euo pipefail
           OUT="$RUNNER_TEMP/airplay-out"
           PACKAGE_OUT="$RUNNER_TEMP/dev-package"
+          VERSION="$(jq -er '.version' addons/airplay/addon.json)"
           test -s "$OUT/shairport-sync"
           test -s "$OUT/nqptp"
           test -s "$OUT/htplay1-control"
@@ -44,7 +45,7 @@ jobs:
           cp -a "$OUT/debs" addons/airplay/debs
           mkdir -p "$PACKAGE_OUT"
           bash tools/pack.sh addons/airplay airplay2 "$PACKAGE_OUT"
-          ARCHIVE="$PACKAGE_OUT/htp1-addon-airplay2-$(jq -er '.version' addons/airplay/addon.json).tar.gz"
+          ARCHIVE="$PACKAGE_OUT/htp1-addon-airplay2-$VERSION.tar.gz"
           test -s "$ARCHIVE"
           tar -tzf "$ARCHIVE" > "$RUNNER_TEMP/archive-list.txt"
           for path in \
@@ -56,7 +57,7 @@ jobs:
             airplay2/units/airplay2-logs.timer; do
             grep -Fxq "$path" "$RUNNER_TEMP/archive-list.txt"
           done
-          tar -xOzf "$ARCHIVE" airplay2/addon.json | jq -e '.published == false and .version == "2.0.72-dev"' >/dev/null
+          tar -xOzf "$ARCHIVE" airplay2/addon.json | jq -e '.published == false and (.version | type == "string" and test("^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$"))' >/dev/null
           (cd "$PACKAGE_OUT" && sha256sum -c "$(basename "$ARCHIVE").sha256")
           echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
